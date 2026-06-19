@@ -1,22 +1,24 @@
-# app/Dockerfile
-
 FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV CURRENCY_MODEL_DIR=/app/models
+ENV CURRENCY_DATA_PATH=/app/data/Foreign_Exchange_Rates.xls
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV STREAMLIT_SERVER_PORT=8501
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    software-properties-common \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN git clone https://github.com/streamlit/streamlit-example.git .
-
-RUN pip3 install -r requirements.txt
+COPY app.py .
 
 EXPOSE 8501
 
-HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
+RUN useradd --create-home --shell /bin/bash appuser
+USER appuser
 
-ENTRYPOINT ["streamlit", "run", "streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health')"
+
+CMD ["streamlit", "run", "app.py", "--server.headless", "true", "--browser.gatherUsageStats", "false"]
